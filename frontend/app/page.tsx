@@ -24,9 +24,10 @@ export default function Dashboard() {
   const wsRef = useRef<WebSocket | null>(null);
 
   const connectWebSocket = () => {
-    // Dynamic WebSocket host resolution (works locally, over network IP, or public tunnels)
-    const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-    const wsUrl = `ws://${host}:8000/ws/market-data`;
+    // Dynamic WebSocket host resolution (supports http/https, local/remote/public domains)
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = typeof window !== 'undefined' ? window.location.host : 'localhost:8000';
+    const wsUrl = `${protocol}//${host}/ws/market-data`;
 
     console.log(`[WebSocket] Connecting to ${wsUrl}...`);
     const ws = new WebSocket(wsUrl);

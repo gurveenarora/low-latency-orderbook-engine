@@ -531,7 +531,8 @@
     // WebSocket Stream Client
     function connectWS() {
       const host = window.location.host;
-      const wsUrl = `ws://${host}/ws/market-data`;
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${host}/ws/market-data`;
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
