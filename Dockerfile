@@ -19,6 +19,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# Set PYTHONPATH so python locates backend modules (cpp_wrapper, risk_analytics, etc.)
+ENV PYTHONPATH=/app/backend:$PYTHONPATH
+
 # Copy compiled C++ shared library and python backend source
 COPY --from=builder /app/cpp_engine/matching_engine.so ./cpp_engine/matching_engine.so
 COPY backend/ ./backend/
