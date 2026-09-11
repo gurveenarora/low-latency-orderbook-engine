@@ -117,18 +117,13 @@
         <i data-lucide="activity" class="w-4 h-4 text-primaryCyan"></i>
         <span>Microstructure Analytics</span>
       </button>
-
-      <button id="burstBtn" onclick="triggerBurst()" class="flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-xs transition-all bg-primaryCyan hover:bg-[#0284c7] text-white shadow-sm">
-        <i data-lucide="zap" class="w-4 h-4"></i>
-        <span id="burstBtnText">SIMULATE 1,000 ORDERS/SEC BURST</span>
-      </button>
     </div>
   </header>
 
   <!-- HERO PERFORMANCE SUMMARY CARDS -->
   <section class="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
     
-    <!-- CARD 1: MID PRICE & SPREAD -->
+    <!-- CARD 1: MID PRICE & STOIKOV MICRO-PRICE -->
     <div class="inst-card p-4 flex flex-col justify-between">
       <div class="flex items-center justify-between">
         <div>
@@ -136,13 +131,13 @@
           <div id="midPriceHero" class="text-2xl font-bold font-mono-custom text-textWhite tracking-tight">$150.00</div>
         </div>
         <div class="text-right">
-          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">BID-ASK SPREAD</div>
-          <div id="spreadHero" class="text-sm font-semibold font-mono-custom text-slate-300">$0.10</div>
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">STOIKOV MICRO-PRICE</div>
+          <div id="microPriceHero" class="text-sm font-semibold font-mono-custom text-primaryCyan">$150.02</div>
         </div>
       </div>
       <div class="mt-3 pt-2.5 border-t border-cardBorder flex items-center justify-between text-[11px] font-mono-custom text-mutedText">
-        <span>Order Book Center</span>
-        <span class="text-slate-400 font-medium">Real-Time Feed</span>
+        <span id="vwapFooter">VWAP: $150.01</span>
+        <span id="spreadHero" class="text-slate-400 font-medium">Spread: $0.10</span>
       </div>
     </div>
 
@@ -196,7 +191,7 @@
       </div>
       <div class="mt-3 pt-2.5 border-t border-cardBorder flex items-center justify-between text-[11px] font-mono-custom text-mutedText">
         <span id="vpinStatusHero" class="text-emerald-400 font-medium">LOW TOXICITY</span>
-        <span class="text-slate-400 font-medium">Informed Flow Filter</span>
+        <span id="garchVolHero" class="text-slate-400 font-medium">GARCH Vol: 18.5%</span>
       </div>
     </div>
 
@@ -401,6 +396,7 @@
             <i data-lucide="radio" class="w-4 h-4 text-primaryCyan"></i>
             LIVE TRADE TAPE
           </h2>
+          <span id="slippageHeader" class="text-[11px] font-mono-custom text-slate-400">Slippage: 0.8 bps</span>
         </div>
 
         <div class="grid grid-cols-4 text-xs font-mono-custom font-medium text-mutedText pb-1.5 border-b border-cardBorder">
@@ -417,7 +413,7 @@
 
   </main>
 
-  <!-- MARKET MICROSTRUCTURE ANALYTICS MODAL (REPLACES SYSTEM BENCHMARKS) -->
+  <!-- MARKET MICROSTRUCTURE ANALYTICS MODAL -->
   <div id="archModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
     <div class="bg-cardBg border border-cardBorder rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
       <button onclick="toggleModal(false)" class="absolute top-5 right-5 p-2 text-mutedText hover:text-white rounded bg-primaryBg border border-cardBorder">
@@ -429,8 +425,8 @@
           <i data-lucide="activity" class="w-6 h-6"></i>
         </div>
         <div>
-          <h2 class="text-xl font-bold text-white">Market Microstructure & Order Flow Analytics</h2>
-          <p class="text-xs text-mutedText mt-0.5">High-Frequency Market Making Models & Order Toxicity Detection</p>
+          <h2 class="text-xl font-bold text-white">Market Microstructure & Quantitative Execution Models</h2>
+          <p class="text-xs text-mutedText mt-0.5">High-Frequency Market Making Models, Order Toxicity, & Implementation Shortfall</p>
         </div>
       </div>
 
@@ -465,6 +461,11 @@
           </thead>
           <tbody class="divide-y divide-cardBorder text-mutedText">
             <tr>
+              <td class="p-3.5 font-semibold text-white">Stoikov Micro-Price Engine</td>
+              <td class="p-3.5 text-slate-400 font-mono">P_micro = P_bid(V_ask/V_tot) + P_ask(V_bid/V_tot)</td>
+              <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Volume-weighted mid-price predicting short-term order book imbalance & next price tick shift.</td>
+            </tr>
+            <tr>
               <td class="p-3.5 font-semibold text-white">VPIN Toxicity Engine</td>
               <td class="p-3.5 text-slate-400 font-mono">VPIN = |V_buy - V_sell| / V_total</td>
               <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Detects adverse selection risk from informed institutional order flow prior to volatility spikes.</td>
@@ -478,6 +479,11 @@
               <td class="p-3.5 font-semibold text-white">Avellaneda-Stoikov Inventory Model</td>
               <td class="p-3.5 text-slate-400 font-mono">r(s,q,t) = s - q·γ·σ²(T-t)</td>
               <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Dynamically shifts bid/ask quotes around reservation price r to maintain optimal inventory bounds q.</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-semibold text-white">Implementation Shortfall (Slippage)</td>
+              <td class="p-3.5 text-slate-400 font-mono">Slippage = |P_exec - P_mid| / P_mid × 10,000 (bps)</td>
+              <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Measures execution quality & market impact slippage in basis points relative to arrival price.</td>
             </tr>
           </tbody>
         </table>
@@ -592,12 +598,21 @@
         }).join('');
       }
 
-      // 2. Render Hero & Risk Metrics
+      // 2. Render Hero & Execution Metrics
       if (data.sharpe) {
         document.getElementById('midPriceHero').innerText = `$${data.sharpe.mid_price.toFixed(2)}`;
         document.getElementById('midPriceBanner').innerText = `$${data.sharpe.mid_price.toFixed(2)}`;
-        document.getElementById('spreadHero').innerText = `$${data.sharpe.bid_ask_spread.toFixed(2)}`;
+        document.getElementById('spreadHero').innerText = `Spread: $${data.sharpe.bid_ask_spread.toFixed(2)}`;
         document.getElementById('sharpeCard').innerText = data.sharpe.sharpe_ratio;
+      }
+
+      if (data.execution) {
+        document.getElementById('microPriceHero').innerText = `$${data.execution.micro_price.toFixed(2)}`;
+        document.getElementById('vwapFooter').innerText = `VWAP: $${data.execution.vwap.toFixed(2)}`;
+        document.getElementById('garchVolHero').innerText = `GARCH Vol: ${data.execution.garch_vol_pct.toFixed(1)}%`;
+        if (document.getElementById('slippageHeader')) {
+          document.getElementById('slippageHeader').innerText = `Slippage: ${data.execution.slippage_bps.toFixed(1)} bps`;
+        }
       }
 
       if (data.risk) {
@@ -721,22 +736,6 @@
         alertBox.className = 'mt-3 p-3 rounded text-xs font-mono-custom bg-primaryBg border border-actionRed/40 text-actionRed block';
         alertBox.innerText = 'Cancel Error';
       }
-    }
-
-    async function triggerBurst() {
-      const btn = document.getElementById('burstBtn');
-      const txt = document.getElementById('burstBtnText');
-      txt.innerText = 'SIMULATING 1,000 ORDERS/SEC...';
-      try {
-        await fetch('/api/simulate-burst', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ order_count: 1000, burst_speed_ms: 1 })
-        });
-      } catch (e) {}
-      setTimeout(() => {
-        txt.innerText = 'SIMULATE 1,000 ORDERS/SEC BURST';
-      }, 2000);
     }
 
     function toggleModal(show) {

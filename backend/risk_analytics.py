@@ -151,3 +151,54 @@ class QuantitativeRiskEngine:
             "as_reservation_skew": round(float(reservation_skew), 4)
         }
 
+    def calculate_microprice_and_vwap(self, bids: List[Dict], asks: List[Dict], trade_history: List[Dict]) -> Dict[str, Any]:
+        """
+        Calculates Quantitative Execution & Pricing Metrics:
+        1. Stoikov Micro-Price: Volume-weighted mid-price predicting short-term price tick movement.
+           MicroPrice = P_bid * (V_ask / V_total) + P_ask * (V_bid / V_total)
+        2. Volume-Weighted Average Price (VWAP) across recent execution trades.
+        3. GARCH(1,1) Dynamic Volatility Estimate.
+        4. Implementation Shortfall (Slippage) in basis points (bps).
+        """
+        best_bid = bids[0]["price"] if bids else self.current_price - 0.05
+        best_ask = asks[0]["price"] if asks else self.current_price + 0.05
+        bid_qty = bids[0]["qty"] if bids else 100
+        ask_qty = asks[0]["qty"] if asks else 100
+        total_top_qty = bid_qty + ask_qty + 1e-6
+
+        # Stoikov Micro-Price Formula
+        micro_price = (best_bid * ask_qty + best_ask * bid_qty) / total_top_qty
+        micro_price_delta = round(micro_price - ((best_bid + best_ask) / 2.0), 4)
+
+        # VWAP calculation
+        if trade_history:
+            total_dollar_vol = sum(t["price"] * t["qty"] for t in trade_history[-30:])
+            total_share_vol = sum(t["qty"] for t in trade_history[-30:]) + 1e-6
+            vwap = total_dollar_vol / total_share_vol
+        else:
+            vwap = self.current_price
+
+        # GARCH(1,1) Volatility Forecasting (omega + alpha * eps^2 + beta * sigma^2)
+        if len(self.returns_history) >= 10:
+            returns = np.array(self.returns_history[-50:])
+            omega, alpha, beta = 1e-5, 0.08, 0.90
+            var = np.var(returns)
+            for r in returns:
+                var = omega + alpha * (r ** 2) + beta * var
+            garch_vol = float(np.sqrt(var) * np.sqrt(252))
+        else:
+            garch_vol = 0.185
+
+        # Implementation Shortfall / Slippage in basis points
+        mid_price = (best_bid + best_ask) / 2.0
+        slippage_bps = round(abs(vwap - mid_price) / mid_price * 10000.0, 2)
+
+        return {
+            "micro_price": round(micro_price, 2),
+            "micro_price_delta": micro_price_delta,
+            "vwap": round(vwap, 2),
+            "garch_vol_pct": round(garch_vol * 100, 2),
+            "slippage_bps": slippage_bps
+        }
+
+

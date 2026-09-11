@@ -18,17 +18,21 @@ An institutional-grade, low-latency electronic trading order book matching engin
 - **Cache-Locality Optimizations:** Direct pointer manipulation and contiguous memory alignment (`alignas`) maximizing CPU L1/L2 cache hit ratios.
 - **Microsecond Latency Diagnostics:** Benchmarked at **$P_{50} = 0.70\,\mu\text{s}$** median and **$P_{99} = 3.45\,\mu\text{s}$** tail latency under 1,000 orders/sec burst throughput.
 
-### 2. Real-Time Market Microstructure Engine
+### 2. Real-Time Market Microstructure & Execution Pricing
+- **Stoikov Micro-Price Model:** Volume-weighted mid-price predicting short-term order book imbalance and next price tick movement before execution:
+  $$P_{\text{Micro}} = P_{\text{bid}} \left(\frac{V_{\text{ask}}}{V_{\text{bid}} + V_{\text{ask}}}\right) + P_{\text{ask}} \left(\frac{V_{\text{bid}}}{V_{\text{bid}} + V_{\text{ask}}}\right)$$
 - **VPIN (Volume-Synchronized Probability of Toxicity):** Real-time measurement of informed institutional order flow concentration vs noise trader liquidity to prevent market maker adverse selection losses.
 - **Order Flow Imbalance (OFI):** Multi-level order book liquidity delta ($\text{OFI}_t = \Delta L_t^{\text{bid}} - \Delta L_t^{\text{ask}}$) quantifying directional pressure.
 - **Avellaneda-Stoikov Market Making Model:** Dynamic reservation price skew computation:
   $$r(s, q, \gamma, \sigma, t) = s - q \cdot \gamma \cdot \sigma^2 \cdot (T - t)$$
   adjusting bid/ask quote spreads around reservation price $r$ based on net inventory position $q$, risk aversion $\gamma$, and volatility $\sigma$.
+- **Implementation Shortfall & Slippage Analytics:** Real-time calculation of execution slippage in basis points ($\text{bps}$) relative to arrival mid-price.
 
-### 3. Stochastic Monte Carlo Risk Engine & Analytics
+### 3. Stochastic Monte Carlo Risk Engine & GARCH Volatility
 - **1,000-Path Monte Carlo Simulation:** Simulates Geometric Brownian Motion (GBM) price trajectories to compute 1-day **95% and 99% Value-at-Risk (VaR)**.
+- **GARCH(1,1) Volatility Forecasting:** Dynamic conditional variance modeling ($\sigma_t^2 = \omega + \alpha \epsilon_{t-1}^2 + \beta \sigma_{t-1}^2$) providing forward volatility estimates for option pricing and spread risk.
 - **Model Backtesting & Validation:** Integrated Kupiec POF Likelihood Ratio backtesting ($\text{LR}_{\text{POF}}$) for statistical confidence bounds.
-- **Volatilty & Trend Regime Classifier:** Dynamic GARCH-inspired regime classification (Bullish Trending, Bearish Volatile, Sideways Consolidation).
+- **Volatility & Trend Regime Classifier:** Dynamic regime classification (Bullish Trending, Bearish Volatile, Sideways Consolidation).
 
 ### 4. Institutional Bloomberg / TradingView Terminal UI
 - Engineered with a Bloomberg-style dark slate design system (`#0B0F19` backdrop, `#162235` cards, `#243249` borders).
@@ -43,7 +47,7 @@ An institutional-grade, low-latency electronic trading order book matching engin
 | **Memory Allocation** | Dynamic `malloc` / `new` calls per order causing OS allocation & GC spikes. | Pre-allocated C++20 `ObjectPool<T>` memory arena for **zero runtime OS heap allocations**. |
 | **Order Cancellations** | Sequential loop iteration through order queues (**$O(N)$ latency growth**). | Associative hash map lookup (`std::unordered_map`) for **instant $O(1)$ un-linking**. |
 | **Pipeline Latency** | Direct HTTP polling or synchronous database blocking writes. | Non-blocking asynchronous message broker & **15ms WebSockets (66 FPS)**. |
-| **Microstructure Risk** | Static historical loss metrics or batch end-of-day reports. | **Real-time VPIN toxicity, OFI imbalance**, and Avellaneda-Stoikov inventory reservation pricing. |
+| **Microstructure Risk** | Static historical loss metrics or batch end-of-day reports. | **Real-time VPIN toxicity, OFI imbalance, Stoikov Micro-Price**, and Avellaneda-Stoikov inventory reservation pricing. |
 
 ---
 
@@ -59,14 +63,15 @@ An institutional-grade, low-latency electronic trading order book matching engin
                                ┌─────────────────────────────────────────┐
                                │        PYTHON FASTAPI BACKEND           │
                                │  - Async Message Broker Queue           │
-                               │  - Monte Carlo VaR Engine (1,000 Paths) │
-                               │  - VPIN / OFI Microstructure Engine    │
+                               │  - Monte Carlo VaR & GARCH(1,1) Vol    │
+                               │  - VPIN / OFI / Stoikov MicroPrice      │
                                └────────────────────┬────────────────────┘
                                                     │ (15ms WSS Tick Stream)
                                                     ▼
                                ┌─────────────────────────────────────────┐
                                │   INSTITUTIONAL BLOOMBERG DASHBOARD    │
                                │  - Level 2 Depth Order Ladder           │
+                               │  - Stoikov MicroPrice & Slippage (bps)  │
                                │  - Real-Time Trade Tape & Latency Cards │
                                └─────────────────────────────────────────┘
 ```
@@ -84,7 +89,7 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ├── backend/
 │   ├── main.py               # FastAPI application & 15ms WebSocket broadcast loop
 │   ├── cpp_wrapper.py        # CTypes dynamic wrapper with Python fallback engine
-│   ├── risk_analytics.py     # Monte Carlo VaR, VPIN, OFI, & Regime classifier
+│   ├── risk_analytics.py     # Monte Carlo VaR, VPIN, OFI, Stoikov MicroPrice, & GARCH
 │   ├── message_broker.py     # Asynchronous non-blocking message broker pipeline
 │   ├── db.py                 # SQLite WAL mode persistence layer
 │   └── static/

@@ -117,6 +117,7 @@ async def broadcast_loop():
                 regime_data = risk_engine.classify_market_regime(depth["bids"], depth["asks"])
                 sharpe_data = risk_engine.calculate_sharpe_and_spread(depth["bids"], depth["asks"])
                 microstructure_data = risk_engine.calculate_vpin_and_ofi(depth["bids"], depth["asks"])
+                execution_data = risk_engine.calculate_microprice_and_vwap(depth["bids"], depth["asks"], trade_history)
                 latency_data = engine.get_latency_stats()
 
                 payload = {
@@ -126,6 +127,7 @@ async def broadcast_loop():
                     "regime": regime_data,
                     "sharpe": sharpe_data,
                     "microstructure": microstructure_data,
+                    "execution": execution_data,
                     "latency": latency_data,
                     "trades": trade_history[-30:],
                     "engine_type": "Native C++20 (MSVC)" if engine.is_native else "High-Speed Python Fallback"
