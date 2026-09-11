@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #0B0E14;
+  color: #E2E8F0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0B0E14;
+}
+::-webkit-scrollbar-thumb {
+  background: #1E293B;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* High-frequency order flash animation */
+@keyframes flashBid {
+  0% { background-color: rgba(0, 230, 118, 0.4); }
+  100% { background-color: transparent; }
+}
+@keyframes flashAsk {
+  0% { background-color: rgba(255, 23, 68, 0.4); }
+  100% { background-color: transparent; }
+}
+
+.flash-bid {
+  animation: flashBid 0.3s ease-out;
+}
+.flash-ask {
+  animation: flashAsk 0.3s ease-out;
+}

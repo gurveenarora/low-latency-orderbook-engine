@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: apex-quant-matching-engine
+    env: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/depth
+    autoDeploy: true

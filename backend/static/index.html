@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>APEX-QUANT | Sub-Microsecond Matching Engine & Market Microstructure Risk Platform</title>
+  
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace']
+          },
+          colors: {
+            primaryBg: '#0B0F19',       // Deep slate black/navy backdrop
+            cardBg: '#162235',          // Institutional panel container
+            cardBorder: '#243249',      // Faint, uniform, desaturated border
+            mutedText: '#64748B',       // Sub-labels & structural headers
+            primaryCyan: '#0ea5e9',     // Clean teal/cyan for Buy & active states
+            actionRed: '#ef4444',       // Clean crimson red for Sell & negative risk
+            textWhite: '#f8fafc'        // High-readability silver/off-white numbers
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0B0F19;
+      color: #f8fafc;
+      font-family: 'Inter', sans-serif;
+    }
+    .font-mono-custom {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0B0F19; }
+    ::-webkit-scrollbar-thumb { background: #243249; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+
+    /* Institutional Card Design System */
+    .inst-card {
+      background-color: #162235;
+      border: 1px solid #243249;
+      border-radius: 8px;
+      transition: border-color 0.15s ease;
+    }
+    .inst-card:hover {
+      border-color: #334155;
+    }
+  </style>
+</head>
+<body class="bg-primaryBg min-h-screen text-textWhite flex flex-col antialiased selection:bg-primaryCyan selection:text-white">
+
+  <!-- TOP INSTITUTIONAL NAVBAR -->
+  <header class="bg-cardBg border-b border-cardBorder px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
+    <div class="flex items-center space-x-4">
+      <div class="bg-primaryBg p-2 rounded-lg border border-cardBorder text-primaryCyan">
+        <i data-lucide="cpu" class="w-5 h-5"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2.5">
+          <h1 class="text-lg font-bold text-white tracking-tight">
+            APEX<span class="text-primaryCyan">QUANT</span>
+          </h1>
+          <span class="text-xs font-mono-custom px-2.5 py-0.5 rounded bg-primaryBg text-slate-300 border border-cardBorder font-medium">
+            C++20 Zero-Alloc Core
+          </span>
+          <span class="text-xs font-mono-custom px-2.5 py-0.5 rounded bg-primaryBg text-slate-300 border border-cardBorder font-medium">
+            FIX/ITCH Protocol
+          </span>
+        </div>
+        <p class="text-xs text-mutedText mt-0.5 font-normal">Sub-Microsecond Order Matching Architecture & Real-Time Market Microstructure Platform</p>
+      </div>
+    </div>
+
+    <!-- ENGINE BADGES & SYSTEM HEALTH -->
+    <div class="flex items-center gap-3 text-xs font-mono-custom">
+      <div class="bg-primaryBg border border-cardBorder px-3 py-1.5 rounded-md flex items-center gap-2">
+        <i data-lucide="server" class="w-3.5 h-3.5 text-mutedText"></i>
+        <span class="text-mutedText">Core:</span>
+        <span id="engineBadge" class="text-slate-200 font-semibold">Native C++20 DLL (MSVC /O2)</span>
+      </div>
+
+      <div class="bg-primaryBg border border-cardBorder px-3 py-1.5 rounded-md flex items-center gap-2">
+        <i data-lucide="activity" class="w-3.5 h-3.5 text-mutedText"></i>
+        <span class="text-mutedText">Stream:</span>
+        <span class="text-slate-200 font-semibold">15ms Tick Stream</span>
+      </div>
+
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded-md bg-primaryBg border border-cardBorder">
+        <span id="wsStatusDot" class="w-2 h-2 rounded-full bg-emerald-500"></span>
+        <span id="wsStatusText" class="text-slate-300 font-medium tracking-wide">WEBSOCKET ONLINE</span>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="flex items-center gap-2.5">
+      <button onclick="toggleModal(true)" class="flex items-center gap-2 bg-primaryBg hover:bg-[#1e2d44] text-slate-200 text-xs px-3.5 py-2 rounded-md font-medium transition-all border border-cardBorder">
+        <i data-lucide="activity" class="w-4 h-4 text-primaryCyan"></i>
+        <span>Microstructure Analytics</span>
+      </button>
+
+      <button id="burstBtn" onclick="triggerBurst()" class="flex items-center gap-2 px-4 py-2 rounded-md font-semibold text-xs transition-all bg-primaryCyan hover:bg-[#0284c7] text-white shadow-sm">
+        <i data-lucide="zap" class="w-4 h-4"></i>
+        <span id="burstBtnText">SIMULATE 1,000 ORDERS/SEC BURST</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- HERO PERFORMANCE SUMMARY CARDS -->
+  <section class="px-6 py-4 grid grid-cols-1 md:grid-cols-4 gap-4">
+    
+    <!-- CARD 1: MID PRICE & SPREAD -->
+    <div class="inst-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">MID-MARKET PRICE</div>
+          <div id="midPriceHero" class="text-2xl font-bold font-mono-custom text-textWhite tracking-tight">$150.00</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">BID-ASK SPREAD</div>
+          <div id="spreadHero" class="text-sm font-semibold font-mono-custom text-slate-300">$0.10</div>
+        </div>
+      </div>
+      <div class="mt-3 pt-2.5 border-t border-cardBorder flex items-center justify-between text-[11px] font-mono-custom text-mutedText">
+        <span>Order Book Center</span>
+        <span class="text-slate-400 font-medium">Real-Time Feed</span>
+      </div>
+    </div>
+
+    <!-- CARD 2: MONTE CARLO VaR -->
+    <div class="inst-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">1,000-PATH 95% VaR</div>
+          <div id="var95Hero" class="text-2xl font-bold font-mono-custom text-actionRed tracking-tight">-0.45%</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">99% TAIL VaR</div>
+          <div id="var99Hero" class="text-sm font-semibold font-mono-custom text-actionRed">-0.85%</div>
+        </div>
+      </div>
+      <div class="mt-3 pt-2.5 border-t border-cardBorder flex items-center justify-between text-[11px] font-mono-custom text-mutedText">
+        <span>1-Day Horizon Risk</span>
+        <span class="text-slate-400 font-medium">GBM Model</span>
+      </div>
+    </div>
+
+    <!-- CARD 3: MICROSECOND LATENCY TAIL -->
+    <div class="inst-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">P50 MEDIAN LATENCY</div>
+          <div id="p50Hero" class="text-2xl font-bold font-mono-custom text-textWhite tracking-tight">0.70 <span class="text-xs text-mutedText font-normal">μs</span></div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">P99 TAIL LATENCY</div>
+          <div id="p99Hero" class="text-sm font-semibold font-mono-custom text-slate-300">3.45 <span class="text-xs text-mutedText font-normal">μs</span></div>
+        </div>
+      </div>
+      <div class="mt-3 pt-2.5 border-t border-cardBorder flex items-center justify-between text-[11px] font-mono-custom text-mutedText">
+        <span>Sub-Microsecond Matching</span>
+        <span class="text-slate-400 font-medium">0 Heap Alloc</span>
+      </div>
+    </div>
+
+    <!-- CARD 4: ORDER FLOW TOXICITY (VPIN / OFI) -->
+    <div class="inst-card p-4 flex flex-col justify-between">
+      <div class="flex items-center justify-between">
+        <div>
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">ORDER FLOW TOXICITY (VPIN)</div>
+          <div id="vpinHero" class="text-2xl font-bold font-mono-custom text-primaryCyan tracking-tight">0.180</div>
+        </div>
+        <div class="text-right">
+          <div class="text-xs text-mutedText font-medium mb-1 uppercase tracking-wider">OFI (SHARES)</div>
+          <div id="ofiHero" class="text-sm font-semibold font-mono-custom text-slate-300">+240 QTY</div>
+        </div>
+      </div>
+      <div class="mt-3 pt-2.5 border-t border-cardBorder flex items-center justify-between text-[11px] font-mono-custom text-mutedText">
+        <span id="vpinStatusHero" class="text-emerald-400 font-medium">LOW TOXICITY</span>
+        <span class="text-slate-400 font-medium">Informed Flow Filter</span>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- DASHBOARD MAIN WORKSPACE GRID -->
+  <main class="flex-1 px-6 pb-6 grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+    <!-- LEFT COLUMN: LEVEL 2 ORDER DEPTH LADDER (4 cols) -->
+    <div class="lg:col-span-4 inst-card p-5 flex flex-col">
+      <div class="flex items-center justify-between border-b border-cardBorder pb-3 mb-3">
+        <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-primaryCyan"></i>
+          LEVEL 2 ORDER BOOK DEPTH
+        </h2>
+        <span class="text-[11px] font-mono-custom text-mutedText bg-primaryBg border border-cardBorder px-2 py-0.5 rounded">
+          Price-Time Priority
+        </span>
+      </div>
+
+      <!-- Live Buy/Sell Order Imbalance Pressure Gauge -->
+      <div class="mb-3">
+        <div class="flex justify-between text-xs font-mono-custom font-semibold mb-1">
+          <span class="text-primaryCyan">BUY PRESSURE 62%</span>
+          <span class="text-actionRed">38% SELL PRESSURE</span>
+        </div>
+        <div class="w-full bg-primaryBg h-2 rounded-full overflow-hidden flex border border-cardBorder">
+          <div class="bg-primaryCyan h-full transition-all duration-300" style="width: 62%"></div>
+          <div class="bg-actionRed h-full transition-all duration-300" style="width: 38%"></div>
+        </div>
+      </div>
+
+      <!-- Depth Table Columns Header -->
+      <div class="grid grid-cols-3 text-xs font-mono-custom font-medium text-mutedText pb-1.5 px-2 border-b border-cardBorder">
+        <div>PRICE ($)</div>
+        <div class="text-right">SIZE (QTY)</div>
+        <div class="text-right font-mono">ORDERS</div>
+      </div>
+
+      <!-- ASKS (SELL ORDERS - CRIMSON RED #EF4444) -->
+      <div id="asksContainer" class="flex-1 overflow-y-auto space-y-0.5 py-1.5 min-h-[200px]"></div>
+
+      <!-- SPREAD & MID PRICE DIVISION BANNER -->
+      <div class="bg-primaryBg border-y border-cardBorder py-2.5 px-4 my-2 flex items-center justify-between rounded">
+        <span class="text-xs font-medium text-mutedText flex items-center gap-2">
+          <i data-lucide="arrow-up-down" class="w-3.5 h-3.5 text-slate-400"></i>
+          MID MARKET RATE:
+        </span>
+        <span id="midPriceBanner" class="text-lg font-bold font-mono-custom text-textWhite">$150.00</span>
+      </div>
+
+      <!-- BIDS (BUY ORDERS - CYAN BLUE #0EA5E9) -->
+      <div id="bidsContainer" class="flex-1 overflow-y-auto space-y-0.5 py-1.5 min-h-[200px]"></div>
+    </div>
+
+    <!-- CENTER COLUMN: MONTE CARLO VaR & LATENCY TAIL HISTOGRAM (5 cols) -->
+    <div class="lg:col-span-5 flex flex-col gap-5">
+
+      <!-- MONTE CARLO VaR CHART PANEL -->
+      <div class="inst-card p-5 flex flex-col justify-between flex-1">
+        <div>
+          <div class="flex items-center justify-between border-b border-cardBorder pb-3 mb-3">
+            <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+              <i data-lucide="line-chart" class="w-4 h-4 text-slate-400"></i>
+              1,000-PATH MONTE CARLO VaR ENGINE
+            </h2>
+            <span id="regimeBadge" class="text-xs font-mono-custom text-slate-300 bg-primaryBg border border-cardBorder px-2.5 py-1 rounded">
+              SIDEWAYS (88.5%)
+            </span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3 mb-3 font-mono-custom">
+            <div class="bg-primaryBg border border-cardBorder p-3 rounded-md">
+              <div class="text-[11px] text-mutedText font-medium mb-0.5">95% VaR (1-DAY)</div>
+              <div id="var95Card" class="text-lg font-bold text-actionRed">-0.45%</div>
+            </div>
+            <div class="bg-primaryBg border border-cardBorder p-3 rounded-md">
+              <div class="text-[11px] text-mutedText font-medium mb-0.5">99% TAIL VaR</div>
+              <div id="var99Card" class="text-lg font-bold text-actionRed">-0.85%</div>
+            </div>
+            <div class="bg-primaryBg border border-cardBorder p-3 rounded-md">
+              <div class="text-[11px] text-mutedText font-medium mb-0.5">SHARPE RATIO</div>
+              <div id="sharpeCard" class="text-lg font-bold text-textWhite">1.85</div>
+            </div>
+          </div>
+
+          <div class="text-xs font-mono-custom text-mutedText mb-2 flex items-center justify-between">
+            <span>STOCHASTIC TRAJECTORIES (GBM MODEL)</span>
+            <span class="text-slate-300 font-medium">1,000 Simulated Paths</span>
+          </div>
+          <div class="h-44 w-full relative">
+            <canvas id="monteCarloChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- LATENCY TAIL DIAGNOSTICS PANEL -->
+      <div class="inst-card p-5 flex flex-col justify-between">
+        <div class="flex items-center justify-between border-b border-cardBorder pb-3 mb-3">
+          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="gauge" class="w-4 h-4 text-primaryCyan"></i>
+            MICROSECOND LATENCY TAIL DIAGNOSTICS
+          </h2>
+          <span class="text-xs bg-primaryBg text-slate-300 border border-cardBorder px-2.5 py-1 rounded font-mono-custom font-medium flex items-center gap-1.5">
+            <i data-lucide="shield-check" class="w-3.5 h-3.5 text-primaryCyan"></i>
+            0 Dynamic Memory Allocations
+          </span>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3 mb-3 font-mono-custom">
+          <div class="bg-primaryBg border border-cardBorder p-3 rounded-md">
+            <div class="text-[11px] text-mutedText mb-0.5 font-medium">P50 (MEDIAN)</div>
+            <div id="p50Card" class="text-xl font-bold text-textWhite">0.70 <span class="text-xs text-mutedText font-normal">μs</span></div>
+          </div>
+          <div class="bg-primaryBg border border-cardBorder p-3 rounded-md">
+            <div class="text-[11px] text-mutedText mb-0.5 font-medium">P90 (90TH %)</div>
+            <div id="p90Card" class="text-xl font-bold text-slate-300">1.20 <span class="text-xs text-mutedText font-normal">μs</span></div>
+          </div>
+          <div class="bg-primaryBg border border-cardBorder p-3 rounded-md">
+            <div class="text-[11px] text-mutedText mb-0.5 font-medium">P99 (TAIL 99TH %)</div>
+            <div id="p99Card" class="text-xl font-bold text-slate-300">3.45 <span class="text-xs text-mutedText font-normal">μs</span></div>
+          </div>
+        </div>
+
+        <div class="bg-primaryBg border border-cardBorder p-3 rounded-md text-xs font-mono-custom flex items-center justify-between text-textWhite">
+          <span class="flex items-center gap-2 text-mutedText">
+            <i data-lucide="cpu" class="w-3.5 h-3.5 text-slate-400"></i>
+            Pre-Allocated Memory Arena Slots:
+          </span>
+          <span id="totalProcessedDisplay" class="text-slate-200 font-semibold">200,000 Pre-Allocated Slots</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: ORDER ENTRY & LIVE TRADE TAPE (3 cols) -->
+    <div class="lg:col-span-3 flex flex-col gap-5">
+
+      <!-- ORDER ENTRY TERMINAL CARD -->
+      <div class="inst-card p-5 flex flex-col justify-between flex-1">
+        <div>
+          <h2 class="text-sm font-semibold text-slate-200 border-b border-cardBorder pb-3 mb-3 flex items-center justify-between">
+            <span>ORDER ENTRY</span>
+            <span class="text-xs px-2.5 py-0.5 rounded bg-primaryBg text-slate-400 border border-cardBorder font-mono-custom">
+              O(1) Map Hash Lookup
+            </span>
+          </h2>
+
+          <!-- BUY / SELL TABS (#0ea5e9 for BUY, #ef4444 for SELL) -->
+          <div class="grid grid-cols-2 gap-2 mb-3 font-semibold text-xs">
+            <button id="buyTab" onclick="setSide('BUY')" class="py-2 rounded transition-all bg-primaryCyan text-white shadow-sm">
+              BUY / BID
+            </button>
+            <button id="sellTab" onclick="setSide('SELL')" class="py-2 rounded transition-all bg-primaryBg text-mutedText border border-cardBorder hover:text-white">
+              SELL / ASK
+            </button>
+          </div>
+
+          <!-- Quick Percentage Size Selector Buttons -->
+          <div class="flex gap-1.5 mb-3 font-mono-custom text-xs">
+            <button type="button" onclick="setQuickQty(25)" class="flex-1 bg-primaryBg hover:bg-[#1e2d44] border border-cardBorder py-1 rounded text-slate-300 font-medium">25%</button>
+            <button type="button" onclick="setQuickQty(50)" class="flex-1 bg-primaryBg hover:bg-[#1e2d44] border border-cardBorder py-1 rounded text-slate-300 font-medium">50%</button>
+            <button type="button" onclick="setQuickQty(75)" class="flex-1 bg-primaryBg hover:bg-[#1e2d44] border border-cardBorder py-1 rounded text-slate-300 font-medium">75%</button>
+            <button type="button" onclick="setQuickQty(100)" class="flex-1 bg-primaryBg hover:bg-[#1e2d44] border border-cardBorder py-1 rounded text-slate-300 font-medium">100%</button>
+          </div>
+
+          <form onsubmit="handleOrderSubmit(event)" class="space-y-3 font-mono-custom text-xs">
+            <div>
+              <label class="block text-mutedText font-medium mb-1">LIMIT PRICE ($)</label>
+              <input type="number" step="0.01" id="orderPrice" value="150.00" class="w-full bg-primaryBg border border-cardBorder rounded px-3 py-2 text-white font-medium focus:outline-none focus:border-primaryCyan text-xs" required>
+            </div>
+            <div>
+              <label class="block text-mutedText font-medium mb-1">QUANTITY (SHARES)</label>
+              <input type="number" step="1" id="orderQty" value="100" class="w-full bg-primaryBg border border-cardBorder rounded px-3 py-2 text-white font-medium focus:outline-none focus:border-primaryCyan text-xs" required>
+            </div>
+            <button type="submit" id="submitBtn" class="w-full py-2.5 rounded font-semibold text-xs bg-primaryCyan hover:bg-[#0284c7] text-white transition-all flex items-center justify-center gap-2 shadow-sm">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+              <span>SUBMIT BUY LIMIT</span>
+            </button>
+          </form>
+
+          <div id="statusAlert" class="mt-3 p-3 rounded text-xs font-mono-custom hidden"></div>
+        </div>
+
+        <!-- O(1) INSTANT CANCEL SECTION -->
+        <div class="pt-3 border-t border-cardBorder mt-3">
+          <label class="block text-xs font-mono-custom text-mutedText font-medium mb-1.5">O(1) INSTANT ORDER CANCEL</label>
+          <div class="flex gap-2">
+            <input type="text" id="cancelIdInput" placeholder="Order ID #" class="flex-1 bg-primaryBg border border-cardBorder rounded px-3 py-1.5 text-xs text-white font-mono-custom focus:outline-none focus:border-actionRed">
+            <button onclick="handleCancelOrder()" class="bg-primaryBg hover:bg-rose-950/40 border border-actionRed/40 text-actionRed px-3 py-1.5 rounded font-mono-custom text-xs font-semibold flex items-center gap-1.5">
+              <i data-lucide="x-circle" class="w-3.5 h-3.5 text-actionRed"></i>
+              CANCEL
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIVE TRADE TAPE CARD -->
+      <div class="inst-card p-5 flex flex-col h-64">
+        <div class="flex items-center justify-between border-b border-cardBorder pb-2.5 mb-2.5">
+          <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+            <i data-lucide="radio" class="w-4 h-4 text-primaryCyan"></i>
+            LIVE TRADE TAPE
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-4 text-xs font-mono-custom font-medium text-mutedText pb-1.5 border-b border-cardBorder">
+          <div>TIME</div>
+          <div>PRICE</div>
+          <div class="text-right">SIZE</div>
+          <div class="text-right">LATENCY</div>
+        </div>
+
+        <div id="tradesContainer" class="flex-1 overflow-y-auto space-y-1 py-1 font-mono-custom text-xs"></div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- MARKET MICROSTRUCTURE ANALYTICS MODAL (REPLACES SYSTEM BENCHMARKS) -->
+  <div id="archModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="bg-cardBg border border-cardBorder rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto p-6 shadow-2xl relative">
+      <button onclick="toggleModal(false)" class="absolute top-5 right-5 p-2 text-mutedText hover:text-white rounded bg-primaryBg border border-cardBorder">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3.5 mb-5">
+        <div class="p-2.5 bg-primaryBg border border-cardBorder rounded-lg text-primaryCyan">
+          <i data-lucide="activity" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <h2 class="text-xl font-bold text-white">Market Microstructure & Order Flow Analytics</h2>
+          <p class="text-xs text-mutedText mt-0.5">High-Frequency Market Making Models & Order Toxicity Detection</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6 font-mono-custom">
+        <div class="bg-primaryBg border border-cardBorder p-4 rounded-lg">
+          <div class="text-xs text-mutedText font-medium mb-1">VPIN TOXICITY INDEX</div>
+          <div id="modalVpin" class="text-2xl font-bold text-primaryCyan">0.180</div>
+          <p class="text-[11px] text-mutedText mt-2">Volume-Synchronized Probability of Toxicity measuring informed trader order flow concentration.</p>
+        </div>
+
+        <div class="bg-primaryBg border border-cardBorder p-4 rounded-lg">
+          <div class="text-xs text-mutedText font-medium mb-1">ORDER FLOW IMBALANCE (OFI)</div>
+          <div id="modalOfi" class="text-2xl font-bold text-slate-200">+240 QTY</div>
+          <p class="text-[11px] text-mutedText mt-2">Net multi-level order book bid vs ask volume shift per unit time interval.</p>
+        </div>
+
+        <div class="bg-primaryBg border border-cardBorder p-4 rounded-lg">
+          <div class="text-xs text-mutedText font-medium mb-1">AVELLANEDA-STOIKOV SKEW</div>
+          <div id="modalSkew" class="text-2xl font-bold text-slate-200">-$0.0150</div>
+          <p class="text-[11px] text-mutedText mt-2">Reservation price adjustment formula: r = S - q·γ·σ²(T-t) compensating inventory risk q.</p>
+        </div>
+      </div>
+
+      <div class="overflow-hidden border border-cardBorder rounded-lg mb-5">
+        <table class="w-full text-left border-collapse text-xs font-mono-custom">
+          <thead>
+            <tr class="bg-primaryBg text-slate-200 border-b border-cardBorder">
+              <th class="p-3.5 font-semibold text-xs">Microstructure Component</th>
+              <th class="p-3.5 font-semibold text-xs">Mathematical Formulation</th>
+              <th class="p-3.5 font-semibold text-xs text-primaryCyan">Quant Market Making Function</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-cardBorder text-mutedText">
+            <tr>
+              <td class="p-3.5 font-semibold text-white">VPIN Toxicity Engine</td>
+              <td class="p-3.5 text-slate-400 font-mono">VPIN = |V_buy - V_sell| / V_total</td>
+              <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Detects adverse selection risk from informed institutional order flow prior to volatility spikes.</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-semibold text-white">Order Flow Imbalance (OFI)</td>
+              <td class="p-3.5 text-slate-400 font-mono">OFI_t = ΔL_t(Bid) - ΔL_t(Ask)</td>
+              <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Quantifies directional buying/selling pressure at top L2 book levels for instant quote skews.</td>
+            </tr>
+            <tr>
+              <td class="p-3.5 font-semibold text-white">Avellaneda-Stoikov Inventory Model</td>
+              <td class="p-3.5 text-slate-400 font-mono">r(s,q,t) = s - q·γ·σ²(T-t)</td>
+              <td class="p-3.5 text-slate-200 font-medium bg-primaryBg/50">Dynamically shifts bid/ask quotes around reservation price r to maintain optimal inventory bounds q.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="flex justify-end">
+        <button onclick="toggleModal(false)" class="bg-primaryCyan hover:bg-[#0284c7] text-white font-semibold text-xs px-5 py-2 rounded transition-all shadow-sm">
+          Close Analytics
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    let currentSide = 'BUY';
+    let chartInstance = null;
+
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Chart.js Monte Carlo Initialization with Clean Institutional Palette
+    function initChart() {
+      const ctx = document.getElementById('monteCarloChart').getContext('2d');
+      chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: Array.from({length: 20}, (_, i) => `t+${i}`),
+          datasets: [
+            { label: 'Path 1', data: [], borderColor: '#0ea5e9', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { label: 'Path 2', data: [], borderColor: '#6366f1', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { label: 'Path 3', data: [], borderColor: '#8b5cf6', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { label: 'Path 4', data: [], borderColor: '#38bdf8', borderWidth: 1.5, pointRadius: 0, tension: 0.2 },
+            { label: 'Path 5', data: [], borderColor: '#ef4444', borderWidth: 1.5, pointRadius: 0, tension: 0.2 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { grid: { color: 'rgba(36, 50, 73, 0.6)' }, ticks: { color: '#64748B', font: { family: 'JetBrains Mono', size: 10 } } },
+            y: { grid: { color: 'rgba(36, 50, 73, 0.6)' }, ticks: { color: '#64748B', font: { family: 'JetBrains Mono', size: 10 } } }
+          }
+        }
+      });
+    }
+    initChart();
+
+    // WebSocket Stream Client
+    function connectWS() {
+      const host = window.location.host;
+      const wsUrl = `ws://${host}/ws/market-data`;
+      const ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        document.getElementById('wsStatusDot').className = 'w-2 h-2 rounded-full bg-emerald-500';
+        document.getElementById('wsStatusText').innerText = 'WEBSOCKET ONLINE';
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          renderDashboard(data);
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        document.getElementById('wsStatusDot').className = 'w-2 h-2 rounded-full bg-actionRed';
+        document.getElementById('wsStatusText').innerText = 'RECONNECTING...';
+        setTimeout(connectWS, 2000);
+      };
+    }
+    connectWS();
+
+    function renderDashboard(data) {
+      // 1. Render Level 2 Order Depth
+      if (data.depth) {
+        const asksContainer = document.getElementById('asksContainer');
+        const bidsContainer = document.getElementById('bidsContainer');
+
+        const displayAsks = (data.depth.asks || []).slice(0, 8).reverse();
+        const displayBids = (data.depth.bids || []).slice(0, 8);
+
+        const maxAskQty = Math.max(...displayAsks.map(a => a.qty), 100);
+        const maxBidQty = Math.max(...displayBids.map(b => b.qty), 100);
+
+        asksContainer.innerHTML = displayAsks.map(a => {
+          const pct = Math.min(100, (a.qty / maxAskQty) * 100);
+          return `
+            <div class="relative grid grid-cols-3 text-xs font-mono-custom font-medium py-1 px-2 hover:bg-[#1e2d44] rounded transition-all">
+              <div class="absolute right-0 top-0 bottom-0 bg-rose-500/15 rounded pointer-events-none" style="width: ${pct}%"></div>
+              <span class="text-actionRed font-bold z-10">$${a.price.toFixed(2)}</span>
+              <span class="text-right text-textWhite font-medium z-10">${a.qty.toLocaleString()}</span>
+              <span class="text-right text-mutedText z-10">${a.count}</span>
+            </div>
+          `;
+        }).join('');
+
+        bidsContainer.innerHTML = displayBids.map(b => {
+          const pct = Math.min(100, (b.qty / maxBidQty) * 100);
+          return `
+            <div class="relative grid grid-cols-3 text-xs font-mono-custom font-medium py-1 px-2 hover:bg-[#1e2d44] rounded transition-all">
+              <div class="absolute right-0 top-0 bottom-0 bg-sky-500/15 rounded pointer-events-none" style="width: ${pct}%"></div>
+              <span class="text-primaryCyan font-bold z-10">$${b.price.toFixed(2)}</span>
+              <span class="text-right text-textWhite font-medium z-10">${b.qty.toLocaleString()}</span>
+              <span class="text-right text-mutedText z-10">${b.count}</span>
+            </div>
+          `;
+        }).join('');
+      }
+
+      // 2. Render Hero & Risk Metrics
+      if (data.sharpe) {
+        document.getElementById('midPriceHero').innerText = `$${data.sharpe.mid_price.toFixed(2)}`;
+        document.getElementById('midPriceBanner').innerText = `$${data.sharpe.mid_price.toFixed(2)}`;
+        document.getElementById('spreadHero').innerText = `$${data.sharpe.bid_ask_spread.toFixed(2)}`;
+        document.getElementById('sharpeCard').innerText = data.sharpe.sharpe_ratio;
+      }
+
+      if (data.risk) {
+        document.getElementById('var95Hero').innerText = `-${data.risk.var_95}%`;
+        document.getElementById('var95Card').innerText = `-${data.risk.var_95}%`;
+        document.getElementById('var99Hero').innerText = `-${data.risk.var_99}%`;
+        document.getElementById('var99Card').innerText = `-${data.risk.var_99}%`;
+        
+        // Update Chart Datasets
+        if (data.risk.paths_sampled && chartInstance) {
+          data.risk.paths_sampled.forEach((path, idx) => {
+            if (chartInstance.data.datasets[idx]) {
+              chartInstance.data.datasets[idx].data = path;
+            }
+          });
+          chartInstance.update('none');
+        }
+      }
+
+      if (data.microstructure) {
+        document.getElementById('vpinHero').innerText = data.microstructure.vpin.toFixed(3);
+        document.getElementById('vpinStatusHero').innerText = data.microstructure.vpin_status;
+        document.getElementById('vpinStatusHero').className = data.microstructure.vpin_status === 'HIGH TOXICITY' ? 'text-actionRed font-medium' : 'text-emerald-400 font-medium';
+        document.getElementById('ofiHero').innerText = `${data.microstructure.ofi > 0 ? '+' : ''}${data.microstructure.ofi} QTY`;
+        
+        if (document.getElementById('modalVpin')) {
+          document.getElementById('modalVpin').innerText = data.microstructure.vpin.toFixed(3);
+          document.getElementById('modalOfi').innerText = `${data.microstructure.ofi > 0 ? '+' : ''}${data.microstructure.ofi} QTY`;
+          document.getElementById('modalSkew').innerText = `$${data.microstructure.as_reservation_skew.toFixed(4)}`;
+        }
+      }
+
+      if (data.regime) {
+        document.getElementById('regimeBadge').innerText = `${data.regime.regime.replace('_', ' ')} (${data.regime.confidence}%)`;
+      }
+
+      if (data.latency) {
+        document.getElementById('p50Hero').innerHTML = `${data.latency.p50.toFixed(2)} <span class="text-xs text-mutedText font-normal">μs</span>`;
+        document.getElementById('p50Card').innerHTML = `${data.latency.p50.toFixed(2)} <span class="text-xs text-mutedText font-normal">μs</span>`;
+        document.getElementById('p90Card').innerHTML = `${data.latency.p90.toFixed(2)} <span class="text-xs text-mutedText font-normal">μs</span>`;
+        document.getElementById('p99Hero').innerHTML = `${data.latency.p99.toFixed(2)} <span class="text-xs text-mutedText font-normal">μs</span>`;
+        document.getElementById('p99Card').innerHTML = `${data.latency.p99.toFixed(2)} <span class="text-xs text-mutedText font-normal">μs</span>`;
+        document.getElementById('totalProcessedDisplay').innerText = `${data.latency.total.toLocaleString()} Orders Processed`;
+      }
+
+      // 3. Render Live Trade Tape
+      if (data.trades) {
+        const tradesContainer = document.getElementById('tradesContainer');
+        tradesContainer.innerHTML = data.trades.slice().reverse().slice(0, 15).map(t => `
+          <div class="grid grid-cols-4 items-center py-1 px-1.5 hover:bg-[#1e2d44] rounded font-medium">
+            <span class="text-mutedText text-[11px]">${t.timestamp || 'Just Now'}</span>
+            <span class="font-bold ${t.side === 'BUY' ? 'text-primaryCyan' : 'text-actionRed'}">$${t.price.toFixed(2)}</span>
+            <span class="text-right text-textWhite font-medium">${t.qty}</span>
+            <span class="text-right text-mutedText text-[11px]">${t.latency_us ? t.latency_us.toFixed(1) : 0.8} μs</span>
+          </div>
+        `).join('');
+      }
+
+      if (data.engine_type) {
+        document.getElementById('engineBadge').innerText = data.engine_type;
+      }
+    }
+
+    function setSide(side) {
+      currentSide = side;
+      const buyTab = document.getElementById('buyTab');
+      const sellTab = document.getElementById('sellTab');
+      const submitBtn = document.getElementById('submitBtn');
+
+      if (side === 'BUY') {
+        buyTab.className = 'py-2 rounded transition-all bg-primaryCyan text-white font-semibold shadow-sm';
+        sellTab.className = 'py-2 rounded transition-all bg-primaryBg text-mutedText border border-cardBorder hover:text-white';
+        submitBtn.className = 'w-full py-2.5 rounded font-semibold text-xs bg-primaryCyan hover:bg-[#0284c7] text-white transition-all flex items-center justify-center gap-2 shadow-sm';
+        submitBtn.querySelector('span').innerText = 'SUBMIT BUY LIMIT';
+      } else {
+        sellTab.className = 'py-2 rounded transition-all bg-actionRed text-white font-semibold shadow-sm';
+        buyTab.className = 'py-2 rounded transition-all bg-primaryBg text-mutedText border border-cardBorder hover:text-white';
+        submitBtn.className = 'w-full py-2.5 rounded font-semibold text-xs bg-actionRed hover:bg-[#dc2626] text-white transition-all flex items-center justify-center gap-2 shadow-sm';
+        submitBtn.querySelector('span').innerText = 'SUBMIT SELL LIMIT';
+      }
+    }
+
+    function setQuickQty(pct) {
+      const qtyInput = document.getElementById('orderQty');
+      const baseQty = 100;
+      qtyInput.value = Math.round(baseQty * (pct / 100) * 4);
+    }
+
+    async function handleOrderSubmit(e) {
+      e.preventDefault();
+      const price = parseFloat(document.getElementById('orderPrice').value);
+      const qty = parseInt(document.getElementById('orderQty').value, 10);
+      const alertBox = document.getElementById('statusAlert');
+
+      try {
+        const res = await fetch('/api/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ price, qty, side: currentSide === 'BUY' ? 0 : 1, trader_id: 101 })
+        });
+        const data = await res.json();
+        alertBox.className = 'mt-3 p-3 rounded text-xs font-mono-custom bg-primaryBg border border-primaryCyan/40 text-primaryCyan block';
+        alertBox.innerText = `Order #${data.order_id} ACCEPTED by C++ Engine`;
+      } catch (err) {
+        alertBox.className = 'mt-3 p-3 rounded text-xs font-mono-custom bg-primaryBg border border-actionRed/40 text-actionRed block';
+        alertBox.innerText = 'Order Submission Error';
+      }
+    }
+
+    async function handleCancelOrder() {
+      const cancelId = document.getElementById('cancelIdInput').value;
+      const alertBox = document.getElementById('statusAlert');
+      if (!cancelId) return;
+
+      try {
+        const res = await fetch(`/api/cancel/${cancelId}`, { method: 'POST' });
+        const data = await res.json();
+        alertBox.className = 'mt-3 p-3 rounded text-xs font-mono-custom bg-primaryBg border border-primaryCyan/40 text-primaryCyan block';
+        alertBox.innerText = data.status === 'SUCCESS' ? `O(1) Instant Cancelled Order #${cancelId}` : `Order #${cancelId} Not Found`;
+      } catch (err) {
+        alertBox.className = 'mt-3 p-3 rounded text-xs font-mono-custom bg-primaryBg border border-actionRed/40 text-actionRed block';
+        alertBox.innerText = 'Cancel Error';
+      }
+    }
+
+    async function triggerBurst() {
+      const btn = document.getElementById('burstBtn');
+      const txt = document.getElementById('burstBtnText');
+      txt.innerText = 'SIMULATING 1,000 ORDERS/SEC...';
+      try {
+        await fetch('/api/simulate-burst', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order_count: 1000, burst_speed_ms: 1 })
+        });
+      } catch (e) {}
+      setTimeout(() => {
+        txt.innerText = 'SIMULATE 1,000 ORDERS/SEC BURST';
+      }, 2000);
+    }
+
+    function toggleModal(show) {
+      document.getElementById('archModal').className = show ? 'fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 block' : 'fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden';
+    }
+  </script>
+</body>
+</html>

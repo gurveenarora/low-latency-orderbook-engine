@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Python cache & virtualenvs
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+.venv/
+env/
+
+# Compiled C++ Binaries & DLLs
+*.dll
+*.exe
+*.obj
+*.lib
+*.exp
+
+# Database & Log files
+*.db
+*.db-journal
+*.log
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
