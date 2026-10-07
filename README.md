@@ -1,4 +1,4 @@
-# Apex-Quant: Sub-Microsecond C++20 Order Matching Engine & Market Microstructure Risk Platform
+# Low-Latency C++20 Order Book Matching Engine & Microstructure Risk Platform
 
 [![C++20 Core](https://img.shields.io/badge/C%2B%2B-20%20Standard-blue.svg?style=flat-square&logo=cplusplus)](https://en.cppreference.com/w/cpp/20)
 [![FastAPI](https://img.shields.io/badge/Backend-FastAPI-009688.svg?style=flat-square&logo=fastapi)](https://fastapi.tiangolo.com/)
@@ -6,47 +6,46 @@
 [![Docker](https://img.shields.io/badge/Deployment-Docker%20Containerized-2496ED.svg?style=flat-square&logo=docker)](https://www.docker.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg?style=flat-square)](LICENSE)
 
-An institutional-grade, low-latency electronic trading order book matching engine and real-time quantitative risk platform designed for high-frequency market making, risk analytics, and microstructure research.
+A high-performance C++20 limit order book matching engine connected to a FastAPI backend and real-time quantitative risk analytics dashboard.
 
 ---
 
-## ⚡ Core Technical Features & Differentiators
+## ⚡ Core Technical Features & Architecture
 
-### 1. Sub-Microsecond C++20 Matching Engine
-- **Pre-Allocated Memory Arena (`ObjectPool<T>`):** Pre-allocated object pool for order structures, minimizing dynamic allocation overhead (~1.45 allocs/order) during live order execution.
-- **$O(1)$ Intrusive Order Cancellations:** Combines `std::unordered_map` hash lookups with intrusive doubly-linked list nodes to achieve instant $O(1)$ order unlinking without scanning order queues ($O(N)$).
-- **Cache-Locality Optimizations:** Direct pointer manipulation and contiguous memory alignment (`alignas`) maximizing CPU L1/L2 cache hit ratios.
-- **Microsecond Latency Diagnostics:** Benchmarked at **$P_{50} = 0.20\,\mu\text{s}$** median and **$P_{99} = 0.70\,\mu\text{s}$** tail latency under 100,000 order benchmark execution.
+### 1. C++20 Order Book Engine
+- **Pre-Allocated Memory Pool (`ObjectPool<T>`):** Pre-allocates order structures (`Order`) in contiguous memory arenas to avoid `new`/`delete` overhead per order node.
+- **Cache Line Alignment (`alignas(64)`):** Aligns `Order` struct definitions to 64-byte L1 cache lines to minimize cache line splitting and maximize L1/L2 cache efficiency.
+- **$O(1)$ Intrusive Order Cancellations:** Uses an `std::unordered_map` index combined with intrusive doubly-linked list pointers (`prev`/`next`) for constant-time order lookup and queue removal.
+- **Microsecond Latency Diagnostics:** Benchmarked on local hardware at **$P_{50} = 0.20\,\mu\text{s}$** median and **$P_{99} = 0.70\,\mu\text{s}$** tail latency over 100,000 processed orders.
 
-### 2. Real-Time Market Microstructure & Execution Pricing
-- **Stoikov Micro-Price Model:** Volume-weighted mid-price predicting short-term order book imbalance and next price tick movement before execution:
+### 2. Market Microstructure & Execution Analytics
+- **Stoikov Micro-Price Model:** Computes volume-weighted mid-price to capture short-term order book imbalance:
   $$P_{\text{Micro}} = P_{\text{bid}} \left(\frac{V_{\text{ask}}}{V_{\text{bid}} + V_{\text{ask}}}\right) + P_{\text{ask}} \left(\frac{V_{\text{bid}}}{V_{\text{bid}} + V_{\text{ask}}}\right)$$
-- **VPIN (Volume-Synchronized Probability of Toxicity):** Real-time measurement of informed institutional order flow concentration vs noise trader liquidity to prevent market maker adverse selection losses.
-- **Order Flow Imbalance (OFI):** Multi-level order book liquidity delta ($\text{OFI}_t = \Delta L_t^{\text{bid}} - \Delta L_t^{\text{ask}}$) quantifying directional pressure.
-- **Avellaneda-Stoikov Market Making Model:** Dynamic reservation price skew computation:
+- **VPIN-Style Depth Imbalance Proxy:** Calculates top-of-book volume imbalance ($\frac{|V_{\text{bid}} - V_{\text{ask}}|}{V_{\text{bid}} + V_{\text{ask}}}$) as an indicator of directional order flow pressure.
+- **Order Flow Imbalance (OFI):** Tracks multi-level order book liquidity delta ($\text{OFI}_t = \Delta L_t^{\text{bid}} - \Delta L_t^{\text{ask}}$).
+- **Avellaneda-Stoikov Reservation Price Skew:** Evaluates inventory risk skew:
   $$r(s, q, \gamma, \sigma, t) = s - q \cdot \gamma \cdot \sigma^2 \cdot (T - t)$$
-  adjusting bid/ask quote spreads around reservation price $r$ based on net inventory position $q$, risk aversion $\gamma$, and volatility $\sigma$.
-- **Implementation Shortfall & Slippage Analytics:** Real-time calculation of execution slippage in basis points ($\text{bps}$) relative to arrival mid-price.
+- **Implementation Shortfall Analytics:** Measures execution slippage in basis points ($\text{bps}$) relative to arrival mid-price.
 
-### 3. Stochastic Monte Carlo Risk Engine & GARCH Volatility
-- **1,000-Path Monte Carlo Simulation:** Simulates Geometric Brownian Motion (GBM) price trajectories to compute 1-day **95% and 99% Value-at-Risk (VaR)**.
-- **GARCH(1,1) Volatility Forecasting:** Dynamic conditional variance modeling ($\sigma_t^2 = \omega + \alpha \epsilon_{t-1}^2 + \beta \sigma_{t-1}^2$) providing forward volatility estimates for option pricing and spread risk.
-- **Volatility & Trend Regime Classifier:** Dynamic regime classification (Bullish Trending, Bearish Volatile, Sideways Consolidation).
+### 3. Quantitative Risk & Volatility Diagnostics
+- **1,000-Path Monte Carlo Simulation:** Simulates Geometric Brownian Motion (GBM) price trajectories for 1-day 95% and 99% Value-at-Risk (VaR).
+- **GARCH(1,1) Volatility Forecasting:** Computes dynamic conditional variance ($\sigma_t^2 = \omega + \alpha \epsilon_{t-1}^2 + \beta \sigma_{t-1}^2$) for forward volatility estimates.
+- **Market Regime Classification:** Categorizes live market state into Bullish Trending, Bearish Volatile, or Sideways Consolidation.
 
-### 4. Institutional Bloomberg / TradingView Terminal UI
-- Engineered with a Bloomberg-style dark slate design system (`#0B0F19` backdrop, `#162235` cards, `#243249` borders).
-- Live 15ms WebSocket tick streaming driving dynamic Level 2 order depth pressure gauges, 1,000-path Chart.js stochastic trajectories, microsecond latency metrics, and real-time trade tape.
+### 4. Interactive Web Terminal UI
+- Clean dark theme dashboard (`#0B0F19` slate background).
+- 15ms WebSocket tick stream rendering Level 2 order depth, Chart.js Monte Carlo trajectories, microsecond latency percentiles, and live trade tape.
 
 ---
 
-## 📊 High-Frequency Architecture vs Standard Web/DB Infrastructure
+## 📊 Architecture Comparison
 
-| Engineering Dimension | Standard Web/DB Architecture | Apex-Quant HFT Production Engine |
+| Engineering Metric | Standard Implementation | Apex-Quant Engine |
 | :--- | :--- | :--- |
-| **Memory Allocation** | Dynamic `malloc` / `new` calls per order causing OS allocation & GC spikes. | Pre-allocated C++20 `ObjectPool<T>` memory arena for low-overhead order node allocations (~1.45 allocs/order). |
-| **Order Cancellations** | Sequential loop iteration through order queues (**$O(N)$ latency growth**). | Associative hash map lookup (`std::unordered_map`) for **instant $O(1)$ un-linking**. |
-| **Pipeline Latency** | Direct HTTP polling or synchronous database blocking writes. | Non-blocking asynchronous message broker & **15ms WebSockets (66 FPS)**. |
-| **Microstructure Risk** | Static historical loss metrics or batch end-of-day reports. | **Real-time VPIN toxicity, OFI imbalance, Stoikov Micro-Price**, and Avellaneda-Stoikov inventory reservation pricing. |
+| **Order Memory** | Dynamic `new` per order node | Pre-allocated C++20 `ObjectPool<T>` with `alignas(64)` |
+| **Order Cancellation** | $O(N)$ queue search | $O(1)$ hashtable lookup + doubly-linked list unlink |
+| **Data Pipeline** | Synchronous REST polling | Asynchronous queue broker & 15ms WebSocket stream |
+| **Risk Metrics** | End-of-day batch reports | Real-time VPIN-style imbalance, OFI, Stoikov Micro-Price, Monte Carlo VaR |
 
 ---
 
@@ -55,7 +54,7 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ```
                                ┌─────────────────────────────────────────┐
                                │       C++20 NATIVE MATCHING ENGINE      │
-                               │  (ObjectPool Order Arena, O(1) Cancel)  │
+                               │  (alignas(64) ObjectPool, O(1) Cancel)  │
                                └────────────────────┬────────────────────┘
                                                     │ (C-ABI CTypes Bridge)
                                                     ▼
@@ -63,43 +62,51 @@ An institutional-grade, low-latency electronic trading order book matching engin
                                │        PYTHON FASTAPI BACKEND           │
                                │  - Async Message Broker Queue           │
                                │  - Monte Carlo VaR & GARCH(1,1) Vol    │
-                               │  - VPIN / OFI / Stoikov MicroPrice      │
+                               │  - VPIN-Style Imbalance & Micro-Price   │
                                └────────────────────┬────────────────────┘
                                                     │ (15ms WSS Tick Stream)
                                                     ▼
                                ┌─────────────────────────────────────────┐
-                               │   INSTITUTIONAL BLOOMBERG DASHBOARD    │
+                               │       REAL-TIME WEB DASHBOARD           │
                                │  - Level 2 Depth Order Ladder           │
-                               │  - Stoikov MicroPrice & Slippage (bps)  │
-                               │  - Real-Time Trade Tape & Latency Cards │
+                               │  - Stoikov Micro-Price & Slippage (bps) │
+                               │  - Live Trade Tape & Latency Metrics    │
                                └─────────────────────────────────────────┘
 ```
 
 ---
 
-## 📂 Repository Directory Structure
+## 📂 Repository Structure
 
 ```
 ├── cpp_engine/
-│   ├── OrderPool.hpp         # Pre-allocated order object pool memory arena implementation
-│   ├── OrderBook.hpp         # O(1) intrusive order book matching engine logic
-│   ├── bench.cpp             # Order book matching and latency benchmark suite
+│   ├── OrderPool.hpp         # Cache-aligned alignas(64) object pool memory arena
+│   ├── OrderBook.hpp         # O(1) intrusive limit order book matching logic
+│   ├── bench.cpp             # Benchmark harness for throughput, latency & allocations
 │   ├── c_api.cpp             # C-ABI export layer for CTypes dynamic bridge
-│   └── build.bat             # MSVC C++20 DLL build script (/O2 /std:c++20 /LD)
+│   └── build.bat             # MSVC C++20 compilation script
 ├── backend/
-│   ├── main.py               # FastAPI application & 15ms WebSocket broadcast loop
-│   ├── cpp_wrapper.py        # CTypes dynamic wrapper with Python fallback engine
-│   ├── risk_analytics.py     # Monte Carlo VaR, VPIN, OFI, Stoikov MicroPrice, & GARCH
-│   ├── message_broker.py     # Asynchronous non-blocking message broker pipeline
+│   ├── main.py               # FastAPI application & WebSocket broadcast loop
+│   ├── cpp_wrapper.py        # CTypes dynamic wrapper with Python fallback
+│   ├── risk_analytics.py     # Monte Carlo VaR, VPIN-style proxy, OFI & GARCH
+│   ├── message_broker.py     # Asynchronous non-blocking message queue
 │   ├── db.py                 # SQLite WAL mode persistence layer
 │   └── static/
-│       └── index.html        # Institutional Bloomberg/TradingView design system UI
-├── Dockerfile                # Multi-stage production Docker build container
-├── render.yaml               # Cloud deployment configuration manifest
+│       └── index.html        # Real-time web dashboard
+├── Dockerfile                # Multi-stage Docker build container
+├── render.yaml               # Cloud deployment manifest
 ├── requirements.txt          # Python dependencies
 ├── LICENSE                   # MIT License
-└── README.md                 # Technical documentation
+└── README.md                 # Project documentation
 ```
+
+---
+
+## ⚠️ Known Limitations & Trade-offs
+
+1. **Heap Allocation Overhead:** While individual `Order` structs are served from a pre-allocated `ObjectPool`, `std::map` (used for ordered price levels), `std::unordered_map` (used for order ID lookups), and dynamic `std::vector` return objects perform heap allocations (~1.45 allocs/order under benchmark load).
+2. **Floating-Point Price Keys:** Prices are stored as `double`, which can introduce floating-point precision/rounding trade-offs compared to fixed-point integer tick representation (`int64_t`).
+3. **Single-Threaded Engine Core:** The matching engine core is non-thread-safe and runs on a single thread. Multithreaded producers must synchronize access via an external lock or message broker queue.
 
 ---
 
@@ -108,9 +115,8 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ### Prerequisites
 - **C++ Compiler:** MSVC (Visual Studio 2022) on Windows OR `g++` (GCC 11+) on Linux/macOS.
 - **Python:** `3.11+`
-- **Docker:** (Optional) for containerized deployment.
 
-### 1. Build C++ Engine DLL / Shared Library
+### 1. Build C++ Shared Library
 ```bash
 # Windows (MSVC)
 cd cpp_engine
@@ -120,7 +126,7 @@ build.bat
 g++ -O2 -std=c++20 -shared -fPIC c_api.cpp -o matching_engine.so
 ```
 
-### 2. Run Latency Benchmark
+### 2. Run Latency & Allocation Benchmark
 ```bash
 # Windows (MSVC)
 cd cpp_engine
@@ -143,15 +149,11 @@ python -m uvicorn backend.main:app --host 0.0.0.0 --port 8080
 ```
 Open **`http://localhost:8080`** in your browser.
 
-### 4. Run with Docker
-```bash
-docker build -t apex-quant-engine .
-docker run -p 8080:8000 apex-quant-engine
-```
-
 ---
 
-## 📈 Latency Benchmarks Summary
+## 📈 Latency Benchmarks
+
+Measured on local hardware over 100,000 order insertions, matches, and cancellations:
 
 - **Median Latency ($P_{50}$):** `0.20 µs`
 - **90th Percentile ($P_{90}$):** `0.30 µs`

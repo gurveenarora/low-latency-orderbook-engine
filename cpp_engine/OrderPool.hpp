@@ -6,8 +6,8 @@
 #include <stdexcept>
 #include <iostream>
 
-// Struct representing an individual limit order
-struct Order {
+// Struct representing an individual limit order (64-byte cache line aligned)
+struct alignas(64) Order {
     uint64_t id;
     uint32_t trader_id;
     double price;

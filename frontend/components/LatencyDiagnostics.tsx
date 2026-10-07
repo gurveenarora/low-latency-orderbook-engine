@@ -12,9 +12,9 @@ interface LatencyStats {
 }
 
 export default function LatencyDiagnostics({ stats }: LatencyStats | any) {
-  const p50 = stats?.p50 || 0.50;
-  const p90 = stats?.p90 || 1.20;
-  const p99 = stats?.p99 || 3.45;
+  const p50 = stats?.p50 || 0.20;
+  const p90 = stats?.p90 || 0.30;
+  const p99 = stats?.p99 || 0.70;
   const total = stats?.total || 0;
 
   const chartData = [
