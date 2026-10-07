@@ -13,10 +13,10 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ## ⚡ Core Technical Features & Differentiators
 
 ### 1. Sub-Microsecond C++20 Matching Engine
-- **Pre-Allocated Memory Arena (`ObjectPool<T>`):** Zero dynamic runtime OS heap allocations (`malloc`/`new`) during live order execution to eliminate non-deterministic Garbage Collection and OS page-fault latency spikes.
+- **Pre-Allocated Memory Arena (`ObjectPool<T>`):** Pre-allocated object pool for order structures, minimizing dynamic allocation overhead (~1.45 allocs/order) during live order execution.
 - **$O(1)$ Intrusive Order Cancellations:** Combines `std::unordered_map` hash lookups with intrusive doubly-linked list nodes to achieve instant $O(1)$ order unlinking without scanning order queues ($O(N)$).
 - **Cache-Locality Optimizations:** Direct pointer manipulation and contiguous memory alignment (`alignas`) maximizing CPU L1/L2 cache hit ratios.
-- **Microsecond Latency Diagnostics:** Benchmarked at **$P_{50} = 0.70\,\mu\text{s}$** median and **$P_{99} = 3.45\,\mu\text{s}$** tail latency under 1,000 orders/sec burst throughput.
+- **Microsecond Latency Diagnostics:** Benchmarked at **$P_{50} = 0.20\,\mu\text{s}$** median and **$P_{99} = 0.70\,\mu\text{s}$** tail latency under 100,000 order benchmark execution.
 
 ### 2. Real-Time Market Microstructure & Execution Pricing
 - **Stoikov Micro-Price Model:** Volume-weighted mid-price predicting short-term order book imbalance and next price tick movement before execution:
@@ -31,7 +31,6 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ### 3. Stochastic Monte Carlo Risk Engine & GARCH Volatility
 - **1,000-Path Monte Carlo Simulation:** Simulates Geometric Brownian Motion (GBM) price trajectories to compute 1-day **95% and 99% Value-at-Risk (VaR)**.
 - **GARCH(1,1) Volatility Forecasting:** Dynamic conditional variance modeling ($\sigma_t^2 = \omega + \alpha \epsilon_{t-1}^2 + \beta \sigma_{t-1}^2$) providing forward volatility estimates for option pricing and spread risk.
-- **Model Backtesting & Validation:** Integrated Kupiec POF Likelihood Ratio backtesting ($\text{LR}_{\text{POF}}$) for statistical confidence bounds.
 - **Volatility & Trend Regime Classifier:** Dynamic regime classification (Bullish Trending, Bearish Volatile, Sideways Consolidation).
 
 ### 4. Institutional Bloomberg / TradingView Terminal UI
@@ -44,7 +43,7 @@ An institutional-grade, low-latency electronic trading order book matching engin
 
 | Engineering Dimension | Standard Web/DB Architecture | Apex-Quant HFT Production Engine |
 | :--- | :--- | :--- |
-| **Memory Allocation** | Dynamic `malloc` / `new` calls per order causing OS allocation & GC spikes. | Pre-allocated C++20 `ObjectPool<T>` memory arena for **zero runtime OS heap allocations**. |
+| **Memory Allocation** | Dynamic `malloc` / `new` calls per order causing OS allocation & GC spikes. | Pre-allocated C++20 `ObjectPool<T>` memory arena for low-overhead order node allocations (~1.45 allocs/order). |
 | **Order Cancellations** | Sequential loop iteration through order queues (**$O(N)$ latency growth**). | Associative hash map lookup (`std::unordered_map`) for **instant $O(1)$ un-linking**. |
 | **Pipeline Latency** | Direct HTTP polling or synchronous database blocking writes. | Non-blocking asynchronous message broker & **15ms WebSockets (66 FPS)**. |
 | **Microstructure Risk** | Static historical loss metrics or batch end-of-day reports. | **Real-time VPIN toxicity, OFI imbalance, Stoikov Micro-Price**, and Avellaneda-Stoikov inventory reservation pricing. |
@@ -56,7 +55,7 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ```
                                ┌─────────────────────────────────────────┐
                                │       C++20 NATIVE MATCHING ENGINE      │
-                               │  (Zero-Heap ObjectPool, O(1) Cancel)   │
+                               │  (ObjectPool Order Arena, O(1) Cancel)  │
                                └────────────────────┬────────────────────┘
                                                     │ (C-ABI CTypes Bridge)
                                                     ▼
@@ -82,8 +81,9 @@ An institutional-grade, low-latency electronic trading order book matching engin
 
 ```
 ├── cpp_engine/
-│   ├── OrderPool.hpp         # Pre-allocated zero-heap memory arena implementation
+│   ├── OrderPool.hpp         # Pre-allocated order object pool memory arena implementation
 │   ├── OrderBook.hpp         # O(1) intrusive order book matching engine logic
+│   ├── bench.cpp             # Order book matching and latency benchmark suite
 │   ├── c_api.cpp             # C-ABI export layer for CTypes dynamic bridge
 │   └── build.bat             # MSVC C++20 DLL build script (/O2 /std:c++20 /LD)
 ├── backend/
@@ -97,6 +97,7 @@ An institutional-grade, low-latency electronic trading order book matching engin
 ├── Dockerfile                # Multi-stage production Docker build container
 ├── render.yaml               # Cloud deployment configuration manifest
 ├── requirements.txt          # Python dependencies
+├── LICENSE                   # MIT License
 └── README.md                 # Technical documentation
 ```
 
@@ -119,17 +120,30 @@ build.bat
 g++ -O2 -std=c++20 -shared -fPIC c_api.cpp -o matching_engine.so
 ```
 
-### 2. Start Platform Backend Server
+### 2. Run Latency Benchmark
+```bash
+# Windows (MSVC)
+cd cpp_engine
+cl /O2 /std:c++20 /EHsc bench.cpp /Fe:bench.exe
+bench.exe
+
+# Linux / macOS (GCC)
+cd cpp_engine
+g++ -O2 -std=c++20 bench.cpp -o bench
+./bench
+```
+
+### 3. Start Platform Backend Server
 ```bash
 # Install Python dependencies
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 
 # Run FastAPI server
 python -m uvicorn backend.main:app --host 0.0.0.0 --port 8080
 ```
 Open **`http://localhost:8080`** in your browser.
 
-### 3. Run with Docker
+### 4. Run with Docker
 ```bash
 docker build -t apex-quant-engine .
 docker run -p 8080:8000 apex-quant-engine
@@ -139,10 +153,11 @@ docker run -p 8080:8000 apex-quant-engine
 
 ## 📈 Latency Benchmarks Summary
 
-- **Median Latency ($P_{50}$):** `0.70 µs`
-- **90th Percentile ($P_{90}$):** `1.20 µs`
-- **Tail Latency ($P_{99}$):** `3.45 µs`
-- **Throughput Capability:** `100,000+ orders/sec`
+- **Median Latency ($P_{50}$):** `0.20 µs`
+- **90th Percentile ($P_{90}$):** `0.30 µs`
+- **Tail Latency ($P_{99}$):** `0.70 µs`
+- **Allocations per Order:** `1.45`
+- **Throughput Capability:** `3,800,000+ orders/sec`
 
 ---
 

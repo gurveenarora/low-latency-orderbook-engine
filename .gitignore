@@ -17,6 +17,8 @@ env/
 *.obj
 *.lib
 *.exp
+bench
+bench.exe
 
 # Database & Log files
 *.db
